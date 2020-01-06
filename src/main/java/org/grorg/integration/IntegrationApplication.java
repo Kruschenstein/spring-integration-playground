@@ -3,37 +3,22 @@ package org.grorg.integration;
 import org.grorg.integration.model.CatFact;
 import org.grorg.integration.model.Num;
 import org.grorg.integration.model.api.Facts;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.convert.ConversionService;
 import org.springframework.http.HttpMethod;
-import org.springframework.integration.context.IntegrationContextUtils;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
 import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.http.dsl.Http;
 import org.springframework.integration.ip.dsl.Tcp;
-import org.springframework.integration.support.converter.ConfigurableCompositeMessageConverter;
-import org.springframework.integration.support.utils.IntegrationUtils;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.converter.GenericMessageConverter;
-
-import java.util.Collections;
 
 @SpringBootApplication
 public class IntegrationApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(IntegrationApplication.class, args);
-    }
-
-    @Bean(name = IntegrationContextUtils.ARGUMENT_RESOLVER_MESSAGE_CONVERTER_BEAN_NAME)
-    public static ConfigurableCompositeMessageConverter configurableCompositeMessageConverter(
-            @Qualifier(IntegrationUtils.INTEGRATION_CONVERSION_SERVICE_BEAN_NAME) ConversionService conversionService) {
-        return new ConfigurableCompositeMessageConverter(
-                Collections.singleton(new GenericMessageConverter(conversionService)));
     }
 
     /**
