@@ -3,6 +3,7 @@ package org.grorg.integration;
 import org.aopalliance.aop.Advice;
 import org.grorg.integration.model.CatFact;
 import org.grorg.integration.model.Num;
+import org.grorg.integration.model.Type;
 import org.grorg.integration.model.api.Facts;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -37,30 +38,29 @@ public class IntegrationApplication {
         return IntegrationFlows
                 .from(incoming)
                 .transform(Transformers.objectToString())
-                .<String, Boolean>route(
-                        p -> {
-                            try { Integer.parseInt(p); } catch (NumberFormatException e) { return false; }
-                            return true;
-                        },
-                        m -> m.subFlowMapping(true, f ->
-                                f.convert(Num.class)
-                                 .enrichHeaders(headerEnricherSpec -> headerEnricherSpec.headerFunction("NUM", message -> ((Num) message.getPayload()).getNum()))
-                                 .log()
-                                 .handle(Http.outboundGateway("http://cat-fact.herokuapp.com/facts")
-                                             .httpMethod(HttpMethod.GET)
-                                             .expectedResponseType(Facts.class))
-                                 .transform(Message.class, message -> {
-                                     Facts facts = (Facts) message.getPayload();
-                                     int num = (int) message.getHeaders().get("NUM");
-                                     return facts.getAll().get(num);
-                                 })
-                                 .headerFilter(MessageHeaders.CONTENT_TYPE)
-                                 .convert(CatFact.class)
-                                 .handle((p, h) -> p.toString()))
-                              .subFlowMapping(false, f ->
-                                      f.handle((p, h) -> "Bye")
-                                       .handle(sender, e -> e.advice(advice)))
+                .enrichHeaders(headerEnricherSpec -> headerEnricherSpec.headerFunction("TYPE", Type::from))
+                .route(Message.class,
+                       m -> m.getHeaders().get("TYPE", Type.class),
+                       m -> m.subFlowMapping(Type.EXIT, f ->
+                               f.handle((p, h) -> "Bye")
+                                .handle(sender, e -> e.advice(advice)))
+                             .noChannelKeyFallback()
+                             .defaultOutputToParentFlow()
                 )
+                .convert(Num.class)
+                .enrichHeaders(headerEnricherSpec -> headerEnricherSpec.headerFunction("NUM", message -> ((Num) message.getPayload()).getNum()))
+                .log()
+                .handle(Http.outboundGateway("http://cat-fact.herokuapp.com/facts")
+                            .httpMethod(HttpMethod.GET)
+                            .expectedResponseType(Facts.class))
+                .transform(Message.class, message -> {
+                    Facts facts = (Facts) message.getPayload();
+                    int num = (int) message.getHeaders().get("NUM");
+                    return facts.getAll().get(num);
+                })
+                .headerFilter(MessageHeaders.CONTENT_TYPE)
+                .convert(CatFact.class)
+                .handle((p, h) -> p.toString())
                 .handle(sender)
                 .get();
     }
